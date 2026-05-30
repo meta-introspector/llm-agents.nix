@@ -1,0 +1,6 @@
+[submodule "third_party/rustnet"]
+	path = third_party/rustnet
+	url = https://github.com/domcyrus/rustnet.git
+[submodule "third_party/eltrafico"]
+	path = third_party/eltrafico
+	url = https://github.com/sigmaSd/Eltrafico.git
