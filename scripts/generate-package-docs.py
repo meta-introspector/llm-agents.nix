@@ -87,39 +87,56 @@ CATEGORY_ORDER = [
     "Uncategorized",
 ]
 
+FUNDING_ORDER = ["Free Tier / Gratis", "Needs Money"]
+
+SPECIAL_ORDER = ["Needs Keys"]
+
+
+def funding_bucket(metadata: dict[str, str | bool | None]) -> str:
+    """Group packages by whether they are free or require money."""
+    if metadata.get("category") == "Needs Keys":
+        return "Needs Keys"
+    return "Needs Money" if metadata.get("license") == "unfree" else "Free Tier / Gratis"
+
 
 def generate_all_docs() -> str:
-    """Generate documentation for all packages, grouped by category."""
+    """Generate documentation for all packages, grouped by funding bucket and category."""
     all_metadata = get_all_packages_metadata()
 
-    # Group packages by category
-    by_category: dict[str, list[tuple[str, dict]]] = {}
+    # Group packages by funding bucket, then by category.
+    by_bucket: dict[str, dict[str, list[tuple[str, dict]]]] = {}
     for package in sorted(all_metadata.keys()):
         metadata = all_metadata[package]
+        bucket = funding_bucket(metadata)
         category = metadata.get("category", "Uncategorized")
-        if category not in by_category:
-            by_category[category] = []
-        by_category[category].append((package, metadata))
+        by_bucket.setdefault(bucket, {})
+        by_bucket[bucket].setdefault(category, [])
+        by_bucket[bucket][category].append((package, metadata))
 
     docs = []
 
-    # Output categories in defined order, then any remaining
-    seen_categories: set[str] = set()
-    for category in CATEGORY_ORDER:
-        if category in by_category:
-            seen_categories.add(category)
-            docs.append(f"### {category}\n")
-            for package, metadata in by_category[category]:
-                docs.append(generate_package_doc(package, metadata))
-            docs.append("")  # Add spacing between categories
+    for bucket in FUNDING_ORDER + SPECIAL_ORDER:
+        categories = by_bucket.get(bucket)
+        if not categories:
+            continue
 
-    # Handle any categories not in CATEGORY_ORDER
-    for category in sorted(by_category.keys()):
-        if category not in seen_categories:
-            docs.append(f"### {category}\n")
-            for package, metadata in by_category[category]:
-                docs.append(generate_package_doc(package, metadata))
-            docs.append("")
+        docs.append(f"## {bucket}\n")
+
+        seen_categories: set[str] = set()
+        for category in CATEGORY_ORDER:
+            if category in categories:
+                seen_categories.add(category)
+                docs.append(f"### {category}\n")
+                for package, metadata in categories[category]:
+                    docs.append(generate_package_doc(package, metadata))
+                docs.append("")
+
+        for category in sorted(categories.keys()):
+            if category not in seen_categories:
+                docs.append(f"### {category}\n")
+                for package, metadata in categories[category]:
+                    docs.append(generate_package_doc(package, metadata))
+                docs.append("")
 
     return "\n".join(docs).rstrip()
 

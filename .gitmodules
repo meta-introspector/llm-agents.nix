@@ -4,3 +4,6 @@
 [submodule "third_party/eltrafico"]
 	path = third_party/eltrafico
 	url = https://github.com/sigmaSd/Eltrafico.git
+[submodule "third_party/letta-code"]
+	path = third_party/letta-code
+	url = https://github.com/letta-ai/letta-code.git

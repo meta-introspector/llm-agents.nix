@@ -2,6 +2,7 @@
 {
   environment.systemPackages = [
     pkgs.iptables-capture
+    pkgs.proxy-qos
     pkgs.rustnet
   ];
 
@@ -14,6 +15,23 @@
       Type = "oneshot";
       ExecStart = "${pkgs.iptables-capture}/bin/iptables-capture install";
       RemainAfterExit = true;
+    };
+  };
+
+  systemd.timers.proxy-qos = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "2m";
+      OnUnitActiveSec = "5m";
+      Unit = "proxy-qos.service";
+    };
+  };
+
+  systemd.services.proxy-qos = {
+    description = "Record proxy QoS metrics";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.proxy-qos}/bin/proxy-qos";
     };
   };
 }

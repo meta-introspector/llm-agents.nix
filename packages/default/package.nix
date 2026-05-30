@@ -20,17 +20,38 @@ writeShellApplication {
   ];
 
   text = ''
-    # Format for fzf: "name  description" (tab-aligned)
-    entries=$(column -t -s $'\t' < "${packageListFile}")
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' EXIT
 
-    if [[ -z $entries ]]; then
-      echo "No packages found" >&2
+    awk -F $'\t' '
+      {
+        category = $3
+        print $1 "\t" $2 "\t" category
+      }
+    ' "${packageListFile}" > "$tmpdir/packages.tsv"
+
+    cut -f3 "$tmpdir/packages.tsv" | sort -u > "$tmpdir/categories.txt"
+
+    selected_category="''${DEFAULT_CATEGORY:-}"
+    if [[ -z "$selected_category" ]]; then
+      selected_category=$(cat "$tmpdir/categories.txt" | fzf \
+        --header="Select a category (ESC to cancel)" \
+        --preview-window=hidden \
+        --no-multi \
+        --height=~40% \
+        --layout=reverse) || exit 0
+    fi
+
+    awk -F $'\t' -v category="$selected_category" '$3 == category { print $1 "\t" $2 }' "$tmpdir/packages.tsv" \
+      | column -t -s $'\t' > "$tmpdir/category-packages.txt"
+
+    if [[ ! -s "$tmpdir/category-packages.txt" ]]; then
+      echo "No packages found in category: $selected_category" >&2
       exit 1
     fi
 
-    # Let user pick with fzf
-    selected=$(echo "$entries" | fzf \
-      --header="Select an AI tool to run (ESC to cancel)" \
+    selected=$(cat "$tmpdir/category-packages.txt" | fzf \
+      --header="Select an AI tool from $selected_category (ESC to cancel)" \
       --preview-window=hidden \
       --no-multi \
       --height=~40% \
